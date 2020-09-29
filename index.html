@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Fastfood w Polsce</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v1.11.1/mapbox-gl.css" rel="stylesheet" />
+<style>
+	body {
+	margin: 0;
+	padding: 0;
+	font-family: Arial, Helvetica, sans-serif;
+	}
+	#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+
+<body>
+	<style>
+		#instructions {
+		  position: absolute;
+		  margin: 0px auto;
+		  width: 300px;
+		  top: 220px;
+		  left: 10px;
+		  bottom: 10px;
+		  padding: 10px;
+		  background-color: rgba(255, 255, 255, 0.9);
+		  overflow-y: scroll;
+		  font-family: sans-serif;
+		  font-size: 14px;
+		  color: #000;
+		  line-height: 15px;
+		}
+
+		.duration {
+		  font-size: 20px;
+		}
+		
+		.guzik {
+			display: block;
+			background: #999999;
+			position: absolute;
+			z-index: 1;
+			margin: 0px auto;
+			left: 10px;
+			width: 312.5px;
+			height: 60px;
+			padding: 10px;			
+			border-radius: 10px;
+			border: 0;
+			font-size: 18px;
+			color: #fff;
+			text-align: center;
+			outline: none;
+		}
+		
+		.guzik:focus,
+		.guzik:hover {
+			background: #727272;
+            cursor: pointer;
+		}
+		
+		#fit {
+			top: 10px;
+		}
+		
+		#authors {
+			top: 80px;
+		}
+		
+		#info {
+			top: 150px;
+		}
+		
+		.modal {
+			display: none; /* Hidden by default */
+			position: fixed; /* Stay in place */
+			z-index: 1; /* Sit on top */
+			padding-top: 100px; /* Location of the box */
+			left: 0;
+			top: 0;
+			width: 100%; /* Full width */
+			height: 100%; /* Full height */
+			overflow: auto; /* Enable scroll if needed */
+			background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+		}
+		
+		.modal-content {
+			display: block;
+			background-color: #fefefe;
+			margin: auto;
+			padding: 20px;
+			border-radius: 10px;
+			width: 300px;
+			height: 300px;
+			position: fixed;
+			z-index: 100;
+			left: 50%;
+			top: 50%;
+			transform: translate(-50%, -50%);
+			background: white;
+		}
+		
+		p {
+			text-align: center;
+			margin: 10px 0 0 0;
+			font-size: 14px;
+		}
+		
+		h1 {
+			text-align: center;
+			margin: 40px 0 40px 0;
+			font-size: 26px;
+		}
+		
+		h1.informacje {
+			margin: 15px 0 15px 0;
+		}
+		
+		h2 {
+			text-align: center;
+			font-weight: normal;
+			margin: 20px 0 20px 0;
+			font-size: 18px;
+		}
+		
+		h2.informacje {
+			font-size: 16px;
+		}
+		
+		h3 {
+			text-align: center;
+			margin: 5px 0 10px 0;
+			font-size: 16px;
+		}
+		
+		h4 {
+			position: absolute;
+			bottom: -10px;
+			right: 10px;
+			font-size: 16px;
+		}
+		
+		.close {
+			color: #aaaaaa;
+			position: absolute;
+			z-index: 1;
+			top: 10px;
+			right: 15px;
+			font-size: 30px;
+			font-weight: bold;
+		}
+
+		.close:hover,
+		.close:focus {
+			color: #000;
+			text-decoration: none;
+			cursor: pointer;
+		}
+		
+		.rounded-rect {
+			background: white;
+			border-radius: 10px;
+			box-shadow: 0 0 50px -25px black;
+		}
+
+		.flex-center {
+			position: absolute;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.flex-center.left {
+			left: 0px;
+		}
+
+		.sidebar-content {
+			position: absolute;
+			width: 95%;
+			height: 95%;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size: 32px;
+			color: gray;
+		}
+
+		.sidebar-toggle {
+			position: absolute;
+			width: 1.3em;
+			height: 1.3em;
+			overflow: visible;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.sidebar-toggle.left {
+			right: -1.5em;
+		}
+
+
+		.sidebar-toggle:hover {
+			color: #0aa1cf;
+			cursor: pointer;
+		}
+
+		.sidebar {
+			transition: transform 1s;
+			z-index: 1;
+			width: 350px;
+			height: 100%;
+		}
+
+		/*
+	  The sidebar styling has them "expanded" by default, we use CSS transforms to push them offscreen
+	  The toggleSidebar() function removes this class from the element in order to expand it.
+	*/
+		.left.collapsed {
+			transform: translateX(-345px);
+		}
+		
+		.white-box {
+			position: absolute;
+			background: #fff;
+			padding: 10px;
+			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+			font-family: Arial, Helvetica, sans-serif;
+			overflow: auto;
+			border-radius: 10px;
+		}
+		
+		#title {
+			text-align: center;
+			font-size: 26px;
+			font-weight: bold;
+			top: 10px;
+			left: 50%;
+			padding-right: 25px;
+			padding-left: 25px;
+			margin-right: -50%;
+			transform: translate(-50%, 0);
+		}
+		
+		#legend {
+			margin: 10px;
+			bottom: 0;
+			right: 0;
+			line-height: 18px;
+			height: 110px;
+			width: 110px;
+			font-size: 15px;
+		}
+
+		.white-box div span {
+			border-radius: 50%;
+			display: inline-block;
+			height: 15px;
+			margin-right: 5px;
+			width: 15px;
+		}
+	</style>
+
+<div id="map">
+    <div id="left" class="sidebar flex-center left collapsed">
+        <div class="sidebar-content rounded-rect flex-center">
+			<!-- Guzik widoku -->
+            <button class="guzik" id="fit">Powrót do widoku głównego</button>
+			<!-- Guzik autorzy -->
+            <button class="guzik" id="authors">Autorzy</button>
+			<!-- Guzik informacje -->
+            <button class="guzik" id="info">Informacje</button>
+			<!-- Instrukcje dojazdu -->
+			<div id="instructions"></div>
+			<div
+                class="sidebar-toggle rounded-rect left"
+                onclick="toggleSidebar('left')"
+            >
+                &rarr;
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- tytuł -->
+<div class='white-box' id='title'>
+	<div>Mapa sieci restauracji szybkiej obsługi typu fast food w Polsce</div>
+</div>
+
+<!-- legenda -->
+<div class='white-box' id='legend'>
+	<h3>Legenda</h3>
+	<div><span style="background-color: #ffd900"></span>McDonald's</div>
+	<div><span style="background-color: #ca1919"></span>KFC</div>
+	<div><span style="background-color: #2ca52c"></span>Subway</div>
+	<div><span style="background-color: #235ca7"></span>Burger King</div>
+</div>
+
+<!-- modal z autorami -->
+<div id="myModal" class="modal">
+  <div class="modal-content">
+    <span id='span_authors' class="close">&times;</span>
+    <h1>Autorzy</h1>
+    <h2>Błażej Kościański</h2>
+    <h2>Izabela Śmiech</h2>
+    <h2>Jakub Pacocha</h2>
+    <h4>UAM WNGiG</h4>
+  </div>
+
+</div>
+
+<!-- modal z informacjami -->
+<div id="informacje" class="modal">
+  <div class="modal-content">
+    <span id='span_info' class="close">&times;</span>
+    <h1 class="informacje"> Informacje</h1>
+	<h2 class="informacje">Jeżeli na mapie nie wyświetlają się żadne restauracje należy odświeżyć stronę</h2>
+	<h2 class="informacje">Nawigacja uruchamia się wyłącznie po zezwoleniu na sprawdzanie lokalizacji</h2>
+    <h2 class="informacje">Baza danych aktualna na dzień 27.09.2020</h2>
+    <h2 class="informacje">Ewentualne błędy prosimy zgłaszać na adres email kierownika projektu: <a href="mailto:blakos1@st.amu.edu.pl">blakos1@st.amu.edu.pl</a></h2>
+  </div>
+
+</div>
+
+<script>
+	mapboxgl.accessToken = 'pk.eyJ1Ijoic3phY2h1YmFodSIsImEiOiJja2JtbGQ0ZWUxamdiMzFwamxoZ2tzazdrIn0.o4P7WkEAL5CPc8R9h3f0QA';
+    var map = new mapboxgl.Map({
+        container: 'map',
+        zoom: 5,
+        center: [19.134422, 52.005933],
+        //style: 'mapbox://styles/szachubahu/ckf1hy3o617tx1alj1ticg3oe',
+		style: 'mapbox://styles/edyficjum/ckd8mak0c0uzk1ipko70l17fx',
+		attributionControl: false
+    });
+	
+	//GUZIKI ----------------------------------------------------------------------------------------------------------
+	// ustawia granice widoku po kliknieciu guzika
+	var powrot = document.getElementById('fit');
+	powrot.onclick = function() {
+		map.flyTo({
+			center: [19.134422, 52.005933],
+			zoom: 5
+			});
+	}
+	
+	// wyswietla autorow po kliknieciu guzika
+	// Get the modal
+	var modal_authors = document.getElementById("myModal");
+	var modal_info = document.getElementById("informacje");
+	
+	// Get the button that opens the modal
+	var btn = document.getElementById("authors");
+	var btn2 = document.getElementById("info");
+	
+	// Get the <span> element that closes the modal
+	var span = document.getElementById("span_authors")
+	var span2 = document.getElementById("span_info")
+	
+	// When the user clicks the button, open the modal 
+	btn.onclick = function() {
+	  modal_authors.style.display = "block";
+	}
+	
+	btn2.onclick = function() {
+	  modal_info.style.display = "block";
+	}
+
+	// When the user clicks on <span> (x), close the modal
+	span.onclick = function() {
+	  modal_authors.style.display = "none";
+	}
+
+	span2.onclick = function() {
+	  modal_info.style.display = "none";
+	}
+
+	// When the user clicks anywhere outside of the modal, close it
+	window.onclick = function(event) {
+	  if (event.target == modal_info) {
+		modal_info.style.display = "none";
+	  }
+	  else if (event.target == modal_authors) {
+		modal_authors.style.display = "none";
+	  }
+	}	
+	
+	//----------------------------------------------------------------------------------------------------------
+    //sidebar
+	function toggleSidebar(id) {
+        var elem = document.getElementById(id);
+        var classes = elem.className.split(' ');
+        var collapsed = classes.indexOf('collapsed') !== -1;
+
+        var padding = {};
+
+        if (collapsed) {
+            // Remove the 'collapsed' class from the class list of the element, this sets it back to the expanded state.
+            classes.splice(classes.indexOf('collapsed'), 1);
+
+            padding[id] = 300; // In px, matches the width of the sidebars set in .sidebar CSS class
+            map.easeTo({
+                padding: padding,
+                duration: 1000 // In ms, CSS transition duration property for the sidebar matches this value
+            });
+        } else {
+            padding[id] = 0;
+            // Add the 'collapsed' class to the class list of the element
+            classes.push('collapsed');
+
+            map.easeTo({
+                padding: padding,
+                duration: 1000
+            });
+        }
+
+        // Update the class list on the element
+        elem.className = classes.join(' ');
+    }
+
+	//----------------------------------------------------------------------------------------------------------		
+	// add zoom and rotation controls to the map.
+	map.addControl(new mapboxgl.NavigationControl());
+	
+	// disable map rotation using right click + drag
+	map.dragRotate.disable();
+ 
+	// disable map rotation using touch rotation gesture
+	map.touchZoomRotate.disableRotation();
+	
+	// add geolocate control to the map.
+	var geolocate = new mapboxgl.GeolocateControl({
+		positionOptions: {enableHighAccuracy: true},
+		trackUserLocation: true
+	});
+
+	map.addControl(geolocate);
+	
+	// geolocate on load
+	map.on('load', function() {
+		geolocate.trigger();
+	});
+	
+	
+	geolocate.on('geolocate', function(e) {
+		var lon = e.coords.longitude;
+		var lat = e.coords.latitude;
+		start = [lon, lat];
+		console.log(start);
+		
+		var geojson2 = {
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+              'type': 'Point',
+              'coordinates': start
+            }
+			};
+		
+		if (map.getSource('point2')) {
+            map.getSource('point2').setData(geojson2);
+          }
+          // otherwise, we'll make a new request
+          else {
+		map.addLayer({
+          'id': 'point2',
+          'type': 'circle',
+          'source': {
+            'type': 'geojson',
+            'data': {
+              'type': 'FeatureCollection',
+              'features': [
+                {
+                  'type': 'Feature',
+                  'properties': {},
+                  'geometry': {
+                    'type': 'Point',
+                    'coordinates': start
+                  }
+                }
+              ]
+            }
+          },
+          'paint': {
+            'circle-radius': 10,
+            'circle-color': '#3887be'
+          }
+        });
+		getRoute(start);
+		};
+	});
+
+	// display driving directions ----------------------------------------------------------------------------
+	// initialize the map canvas to interact with later
+    var canvas = map.getCanvasContainer();
+
+    // create a function to make a directions request
+      function getRoute(end) {
+        // make directions request using driving profile
+        var url =
+          'https://api.mapbox.com/directions/v5/mapbox/driving/' +
+          start[0] +
+          ',' +
+          start[1] +
+          ';' +
+          end[0] +
+          ',' +
+          end[1] +
+          '?steps=true&geometries=geojson&access_token=' +
+          mapboxgl.accessToken;
+
+        // make an XHR request
+        var req = new XMLHttpRequest();
+        req.open('GET', url, true);
+        req.onload = function() {
+          var json = JSON.parse(req.response);
+          var data = json.routes[0];
+          var route = data.geometry.coordinates;
+          var geojson = {
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+              'type': 'LineString',
+              'coordinates': route
+            }
+          };
+          // if the route already exists on the map, we'll reset it using setData
+          if (map.getSource('route')) {
+            map.getSource('route').setData(geojson);
+          }
+          // otherwise, we'll make a new request
+          else {
+            map.addLayer({
+              'id': 'route',
+              'type': 'line',
+              'source': {
+                'type': 'geojson',
+                'data': {
+                  'type': 'Feature',
+                  'properties': {},
+                  'geometry': {
+                    'type': 'LineString',
+                    'coordinates': geojson
+                  }
+                }
+              },
+              'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              'paint': {
+                'line-color': '#3887be',
+                'line-width': 5,
+                'line-opacity': 0.75
+              }
+            });
+          }
+
+          // get the sidebar and add the instructions
+          var instructions = document.getElementById('instructions');
+          var steps = data.legs[0].steps;
+
+          var tripInstructions = [];
+          for (var i = 0; i < steps.length; i++) {
+            tripInstructions.push('<br><li>' + steps[i].maneuver.instruction) +
+              '</li>';
+            instructions.innerHTML =
+              '<br><span class="duration">Trip duration: ' +
+              Math.floor(data.duration / 60) +
+              ' min </span>' + '<br>' +
+              tripInstructions;
+          }
+        };
+        req.send();
+      }
+
+      map.on('load', function() {
+        // allow the user to click the map to change the destination
+        map.on('click', 'restaurant_circle', function(e) {
+			var coordinates_nav = e.features[0].geometry.coordinates.slice();
+			var longitude_nav = e.features[0].properties.longitude;
+			var latitude_nav = e.features[0].properties.latitude;
+			var array = [longitude_nav, latitude_nav]
+			var coordsObj = mapboxgl.LngLat.convert(array);;
+		  
+		  console.log(coordsObj);
+		  
+          canvas.style.cursor = '';
+          var coords = Object.keys(coordsObj).map(function(key) {
+            return coordsObj[key];
+          });
+          var end = {
+            'type': 'FeatureCollection',
+            'features': [
+              {
+                'type': 'Feature',
+                'properties': {},
+                'geometry': {
+                  'type': 'Point',
+                  'coordinates': coords
+                }
+              }
+            ]
+          };
+          if (map.getLayer('end')) {
+            map.getSource('end').setData(end);
+          } else {
+            map.addLayer({
+              'id': 'end',
+              'type': 'circle',
+              'source': {
+                'type': 'geojson',
+                'data': {
+                  'type': 'FeatureCollection',
+                  'features': [
+                    {
+                      'type': 'Feature',
+                      'properties': {},
+                      'geometry': {
+                        'type': 'Point',
+                        'coordinates': coords
+                      }
+                    }
+                  ]
+                }
+              },
+              'paint': {
+                'circle-radius': 10,
+                'circle-color': '#f30'
+              }
+            });
+          }
+		  if (typeof start !== 'undefined'){
+          getRoute(coords);
+		  };
+        });
+      });
+	  
+//----------------------------------------------------------------------------------------------------------
+    // filters for classifying restaurants into five categories based on name
+    var mag1 = ['==', ['get', 'mag'], 1];
+    var mag2 = ['==', ['get', 'mag'], 2];
+    var mag3 = ['==', ['get', 'mag'], 3];
+    var mag4 = ['==', ['get', 'mag'], 4];
+
+	// colors to use for the categories
+    var colors = ['#235ca7', '#ca1919', '#ffd900', '#2ca52c'];
+
+    map.on('load', function() {
+		// toggle sidebar
+		toggleSidebar('left');
+        // add a clustered GeoJSON source for a sample set of restaurants
+        map.addSource('restaurants', {
+            'type': 'geojson',
+            'data':
+                'https://api.mapbox.com/datasets/v1/szachubahu/ckfcj1qeg1lva2cnnewrkk1l3/features?access_token=pk.eyJ1Ijoic3phY2h1YmFodSIsImEiOiJja2JtbGQ0ZWUxamdiMzFwamxoZ2tzazdrIn0.o4P7WkEAL5CPc8R9h3f0QA',
+            'cluster': true,
+            'clusterRadius': 80,
+            'clusterProperties': {
+                // keep separate counts for each restaurant category in a cluster
+                'mag1': ['+', ['case', mag1, 1, 0]],
+                'mag2': ['+', ['case', mag2, 1, 0]],
+                'mag3': ['+', ['case', mag3, 1, 0]],
+                'mag4': ['+', ['case', mag4, 1, 0]]
+            }
+        });
+        // circle and symbol layers for rendering individual restaurants (unclustered points)
+        map.addLayer({
+            'id': 'restaurant_circle',
+            'type': 'circle',
+            'source': 'restaurants',
+            'filter': ['!=', 'cluster', true],
+            'paint': {
+                'circle-color': [
+                    'case',
+                    mag1,
+                    colors[0],
+                    mag2,
+                    colors[1],
+                    mag3,
+                    colors[2],
+                    colors[3]
+                ],
+                'circle-opacity': 0.6,
+                'circle-radius': 12
+            }
+        });
+        map.addLayer({
+            'id': 'restaurant_label',
+            'type': 'symbol',
+            'source': 'restaurants',
+            'filter': ['!=', 'cluster', true],
+            'layout': {
+                'text-field': ['get', 'name'],
+                'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                'text-size': 10,
+				'text-offset': [0, 1],
+				'text-anchor': 'top'
+            },
+            'paint': {
+                'text-color': 'black'
+            }
+        });
+
+        // objects for caching and keeping track of HTML marker objects (for performance)
+        var markers = {};
+        var markersOnScreen = {};
+
+        function updateMarkers() {
+            var newMarkers = {};
+            var features = map.querySourceFeatures('restaurants');
+
+            // for every cluster on the screen, create an HTML marker for it (if we didn't yet),
+            // and add it to the map if it's not there already
+            for (var i = 0; i < features.length; i++) {
+                var coords = features[i].geometry.coordinates;
+                var props = features[i].properties;
+                if (!props.cluster) continue;
+                var id = props.cluster_id;
+
+                var marker = markers[id];
+                if (!marker) {
+                    var el = createDonutChart(props);
+                    marker = markers[id] = new mapboxgl.Marker({
+                        element: el
+                    }).setLngLat(coords);
+                }
+                newMarkers[id] = marker;
+
+                if (!markersOnScreen[id]) marker.addTo(map);
+            }
+            // for every marker we've added previously, remove those that are no longer visible
+            for (id in markersOnScreen) {
+                if (!newMarkers[id]) markersOnScreen[id].remove();
+            }
+            markersOnScreen = newMarkers;
+        }
+
+        // after the GeoJSON data is loaded, update markers on the screen and do so on every map move/moveend
+        map.on('data', function(e) {
+            if (e.sourceId !== 'restaurants' || !e.isSourceLoaded) return;
+
+            map.on('move', updateMarkers);
+            map.on('moveend', updateMarkers);
+            updateMarkers();
+        });
+		
+		// POPUPY -----------------------------------------------------------------------------------------
+        // When a click event occurs on a feature in the restaurant_circle layer, open a popup at the
+        // location of the feature, with description HTML from its properties.
+        map.on('click', 'restaurant_circle', function(e) {
+            var coordinates = e.features[0].geometry.coordinates.slice();
+            // Ensure that if the map is zoomed out such that multiple
+            // copies of the feature are visible, the popup appears
+            // over the copy being pointed to.
+            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+            }
+
+            new mapboxgl.Popup({maxWidth: 'none'})
+                .setLngLat(coordinates)
+				.setHTML(ClickedPopup(e))
+                .addTo(map);
+        });
+
+        // Change the cursor to a pointer when the mouse is over the restaurant_circle layer.
+        map.on('mouseenter', 'restaurant_circle', function() {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'restaurant_circle', function() {
+            map.getCanvas().style.cursor = '';
+        });
+    });
+
+	// ustawia wygląd popupów
+	function ClickedPopup(e){
+		var html = '';
+		html += "<div>";
+		html += "<h3>" + e.features[0].properties.name + "</h3>";
+		html += "<p>" + e.features[0].properties.address + "</p>";
+		
+		if (e.features[0].properties.hours1 !== 'null') {
+			html += "<p>" + e.features[0].properties.hours1 + "</p>";
+		};
+		if (e.features[0].properties.hours2 !== 'null') {
+			html += "<p>" + e.features[0].properties.hours2 + "</p>";
+		};
+		if (e.features[0].properties.hours3 !== 'null') {
+			html += "<p>" + e.features[0].properties.hours3 + "</p>";
+		};
+		if (e.features[0].properties.hours4 !== 'null') {
+			html += "<p>" + e.features[0].properties.hours4 + "</p>";
+		};
+		if (e.features[0].properties.hours5 !== 'null') {
+			html += "<p>" + e.features[0].properties.hours5 + "</p>";
+		};
+		
+		html += "<p>" + String(e.features[0].properties.latitude).slice(0, 7) + ' N' + "</p>";
+		html += "<p>" + String(e.features[0].properties.longitude).slice(0, 7) + ' E' + "</p>";		
+		
+		html += "</div>";
+		return html;
+	}
+
+
+
+    // code for creating an SVG donut chart from feature properties
+    function createDonutChart(props) {
+        var offsets = [];
+        var counts = [
+            props.mag1,
+            props.mag2,
+            props.mag3,
+            props.mag4
+        ];
+        var total = 0;
+        for (var i = 0; i < counts.length; i++) {
+            offsets.push(total);
+            total += counts[i];
+        }
+        var fontSize =
+            total >= 1000 ? 22 : total >= 100 ? 20 : total >= 10 ? 18 : 16;
+        var r = total >= 1000 ? 50 : total >= 100 ? 32 : total >= 10 ? 24 : 18;
+        var r0 = Math.round(r * 0.6);
+        var w = r * 2;
+
+        var html =
+            '<div><svg width="' +
+            w +
+            '" height="' +
+            w +
+            '" viewbox="0 0 ' +
+            w +
+            ' ' +
+            w +
+            '" text-anchor="middle" style="font: ' +
+            fontSize +
+            'px sans-serif; display: block">';
+
+        for (i = 0; i < counts.length; i++) {
+            html += donutSegment(
+                offsets[i] / total,
+                (offsets[i] + counts[i]) / total,
+                r,
+                r0,
+                colors[i]
+            );
+        }
+        html +=
+            '<circle cx="' +
+            r +
+            '" cy="' +
+            r +
+            '" r="' +
+            r0 +
+            '" fill="white" /><text dominant-baseline="central" transform="translate(' +
+            r +
+            ', ' +
+            r +
+            ')">' +
+            total.toLocaleString() +
+            '</text></svg></div>';
+
+        var el = document.createElement('div');
+        el.innerHTML = html;
+        return el.firstChild;
+    }
+
+    function donutSegment(start, end, r, r0, color) {
+        if (end - start === 1) end -= 0.00001;
+        var a0 = 2 * Math.PI * (start - 0.25);
+        var a1 = 2 * Math.PI * (end - 0.25);
+        var x0 = Math.cos(a0),
+            y0 = Math.sin(a0);
+        var x1 = Math.cos(a1),
+            y1 = Math.sin(a1);
+        var largeArc = end - start > 0.5 ? 1 : 0;
+
+        return [
+            '<path d="M',
+            r + r0 * x0,
+            r + r0 * y0,
+            'L',
+            r + r * x0,
+            r + r * y0,
+            'A',
+            r,
+            r,
+            0,
+            largeArc,
+            1,
+            r + r * x1,
+            r + r * y1,
+            'L',
+            r + r0 * x1,
+            r + r0 * y1,
+            'A',
+            r0,
+            r0,
+            0,
+            largeArc,
+            0,
+            r + r0 * x0,
+            r + r0 * y0,
+            '" fill="' + color + '" />'
+        ].join(' ');
+    }
+</script>
+
+</body>
+</html>
